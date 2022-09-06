@@ -45,6 +45,7 @@ public:
 			encode_buffer_queue_.push(completed_request); // creates a new reference
 		}
 		encoder_->EncodeBuffer(buffer->planes()[0].fd.get(), span.size(), mem, info, timestamp_ns / 1000);
+		encoder_->metadataReady(completed_request->metadata);
 	}
 	VideoOptions *GetOptions() const { return static_cast<VideoOptions *>(options_.get()); }
 	void StopEncoder() { encoder_.reset(); }

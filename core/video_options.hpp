@@ -58,6 +58,10 @@ struct VideoOptions : public Options
 			 "Write output to a circular buffer of the given size (in MB) which is saved on exit")
 			("frames", value<unsigned int>(&frames)->default_value(0),
 			 "Run for the exact number of frames specified. This will override any timeout set.")
+			("metadata", value<std::string>(&metadata),
+			 "Save captured image metadata to a file or \"-\" for stdout")
+			("metadata-plain", value<bool>(&metadata_plain)->default_value(false)->implicit_value(true),
+			 "Save the metadata as plaintext rather than json (requires --metadata)")
 #if LIBAV_PRESENT
 			("libav-format", value<std::string>(&libav_format)->default_value(""),
 			 "Sets the libav encoder output format to use. "
@@ -104,6 +108,8 @@ struct VideoOptions : public Options
 	uint32_t segment;
 	size_t circular;
 	uint32_t frames;
+	std::string metadata;
+	bool metadata_plain;
 
 	virtual bool Parse(int argc, char *argv[]) override
 	{
@@ -154,5 +160,6 @@ struct VideoOptions : public Options
 		std::cerr << "    split: " << split << std::endl;
 		std::cerr << "    segment: " << segment << std::endl;
 		std::cerr << "    circular: " << circular << std::endl;
+		std::cerr << "    metadata: " << metadata << std::endl;
 	}
 };

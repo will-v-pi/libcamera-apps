@@ -20,8 +20,8 @@ class Encoder
 public:
 	static Encoder *Create(VideoOptions const *options, StreamInfo const &info);
 
-	Encoder(VideoOptions const *options) : options_(options) {}
-	virtual ~Encoder() {}
+	Encoder(VideoOptions const *options);
+	virtual ~Encoder();
 	// This is where the application sets the callback it gets whenever the encoder
 	// has finished with an input buffer, so the application can re-use it.
 	void SetInputDoneCallback(InputDoneCallback callback) { input_done_callback_ = callback; }
@@ -33,8 +33,13 @@ public:
 	// describing a DMABUF, and by a mmapped userland pointer.
 	virtual void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us) = 0;
 
+	void metadataReady(const libcamera::ControlList &metadata);
+
 protected:
 	InputDoneCallback input_done_callback_;
 	OutputReadyCallback output_ready_callback_;
 	VideoOptions const *options_;
+	std::streambuf *buf_metadata_;
+	std::ofstream of_metadata_;
+	bool metadata_started_ = false;
 };
