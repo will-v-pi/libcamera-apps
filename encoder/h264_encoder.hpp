@@ -20,7 +20,8 @@ public:
 	H264Encoder(VideoOptions const *options, StreamInfo const &info);
 	~H264Encoder();
 	// Encode the given DMABUF.
-	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us) override;
+	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+					  const libcamera::ControlList &metadata) override;
 
 private:
 	// We want at least as many output buffers as there are in the camera queue
@@ -66,4 +67,5 @@ private:
 	std::mutex output_mutex_;
 	std::condition_variable output_cond_var_;
 	std::thread output_thread_;
+	std::queue<libcamera::ControlList> metadata_queue_;
 };

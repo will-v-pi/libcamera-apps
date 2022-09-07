@@ -239,7 +239,8 @@ H264Encoder::~H264Encoder()
 	LOG(2, "H264Encoder closed");
 }
 
-void H264Encoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us)
+void H264Encoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+							   const libcamera::ControlList &metadata)
 {
 	int index;
 	{
@@ -266,6 +267,8 @@ void H264Encoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const 
 	buf.m.planes[0].length = size;
 	if (xioctl(fd_, VIDIOC_QBUF, &buf) < 0)
 		throw std::runtime_error("failed to queue input to codec");
+
+	metadata_queue_.push(metadata);
 }
 
 void H264Encoder::pollThread()
@@ -358,7 +361,9 @@ void H264Encoder::outputThread()
 			}
 		}
 
-		output_ready_callback_(item.mem, item.bytes_used, item.timestamp_us, item.keyframe);
+		auto metadata = metadata_queue_.front();
+		output_ready_callback_(item.mem, item.bytes_used, item.timestamp_us, item.keyframe, metadata);
+		metadata_queue_.pop();
 		v4l2_buffer buf = {};
 		v4l2_plane planes[VIDEO_MAX_PLANES] = {};
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;

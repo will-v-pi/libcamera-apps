@@ -21,7 +21,7 @@ public:
 	Output(VideoOptions const *options);
 	virtual ~Output();
 	virtual void Signal(); // a derived class might redefine what this means
-	void OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe);
+	void OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe, libcamera::ControlList metadata);
 
 protected:
 	enum Flag
@@ -32,6 +32,7 @@ protected:
 	};
 	virtual void outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint32_t flags);
 	virtual void timestampReady(int64_t timestamp);
+	void metadataReady(const libcamera::ControlList &metadata);
 	VideoOptions const *options_;
 	FILE *fp_timestamps_;
 
@@ -46,4 +47,11 @@ private:
 	std::atomic<bool> enable_;
 	int64_t time_offset_;
 	int64_t last_timestamp_;
+	std::streambuf *buf_metadata_;
+	std::ofstream of_metadata_;
+	bool metadata_started_ = false;
 };
+
+void start_metadata_output(std::streambuf *buf, std::string fmt);
+void write_metadata(std::streambuf *buf, std::string fmt, const libcamera::ControlList &metadata, bool first_write);
+void stop_metadata_output(std::streambuf *buf, std::string fmt);

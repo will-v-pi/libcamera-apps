@@ -34,7 +34,8 @@ public:
 	LibAvEncoder(VideoOptions const *options, StreamInfo const &info);
 	~LibAvEncoder();
 	// Encode the given DMABUF.
-	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us) override;
+	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+					  const libcamera::ControlList &metadata) override;
 
 private:
 	void initVideoCodec(VideoOptions const *options, StreamInfo const &info);

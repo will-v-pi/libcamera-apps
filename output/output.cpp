@@ -14,7 +14,8 @@
 #include "output.hpp"
 
 Output::Output(VideoOptions const *options)
-	: options_(options), fp_timestamps_(nullptr), state_(WAITING_KEYFRAME), time_offset_(0), last_timestamp_(0)
+	: options_(options), fp_timestamps_(nullptr), state_(WAITING_KEYFRAME), time_offset_(0), last_timestamp_(0),
+	  buf_metadata_(std::cout.rdbuf()), of_metadata_()
 {
 	if (!options->save_pts.empty())
 	{
@@ -24,6 +25,18 @@ Output::Output(VideoOptions const *options)
 		fprintf(fp_timestamps_, "# timecode format v2\n");
 	}
 
+	if (!options->metadata.empty())
+	{
+		const std::string &filename = options_->metadata;
+
+		if (filename.compare("-"))
+		{
+			of_metadata_.open(filename, std::ios::out);
+			buf_metadata_ = of_metadata_.rdbuf();
+			start_metadata_output(buf_metadata_, options_->metadata_format);
+		}
+	}
+
 	enable_ = !options->pause;
 }
 
@@ -31,6 +44,8 @@ Output::~Output()
 {
 	if (fp_timestamps_)
 		fclose(fp_timestamps_);
+	if (!options_->metadata.empty())
+		stop_metadata_output(buf_metadata_, options_->metadata_format);
 }
 
 void Output::Signal()
@@ -38,7 +53,7 @@ void Output::Signal()
 	enable_ = !enable_;
 }
 
-void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
+void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe, libcamera::ControlList metadata)
 {
 	// When output is enabled, we may have to wait for the next keyframe.
 	uint32_t flags = keyframe ? FLAG_KEYFRAME : FLAG_NONE;
@@ -63,6 +78,9 @@ void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyf
 	{
 		timestampReady(last_timestamp_);
 	}
+
+	// Save metadata to file, if that was requested
+	metadataReady(metadata);
 }
 
 void Output::timestampReady(int64_t timestamp)
@@ -90,4 +108,54 @@ Output *Output::Create(VideoOptions const *options)
 		return new FileOutput(options);
 	else
 		return new Output(options);
+}
+
+void Output::metadataReady(const libcamera::ControlList &metadata)
+{
+	if (options_->metadata.empty())
+		return;
+
+	write_metadata(buf_metadata_, options_->metadata_format, metadata, !metadata_started_);
+	metadata_started_ = true;
+}
+
+void start_metadata_output(std::streambuf *buf, std::string fmt)
+{
+	std::ostream out(buf);
+	if (fmt == "json")
+		out << "[" << std::endl;
+}
+
+void write_metadata(std::streambuf *buf, std::string fmt, const libcamera::ControlList &metadata, bool first_write)
+{
+	std::ostream out(buf);
+	const libcamera::ControlIdMap *id_map = metadata.idMap();
+	if (fmt == "txt")
+	{
+		for (auto const &[id, val] : metadata)
+			out << id_map->at(id)->name() << "=" << val.toString() << std::endl;
+		out << std::endl;
+	}
+	else
+	{
+		if (!first_write)
+			out << "," << std::endl;
+		out << "{";
+		bool first_done = false;
+		for (auto const &[id, val] : metadata)
+		{
+			std::string arg_quote = (val.toString().find('/') != std::string::npos) ? "\"" : "";
+			out << (first_done ? "," : "") << std::endl
+				<< "    \"" << id_map->at(id)->name() << "\": " << arg_quote << val.toString() << arg_quote;
+			first_done = true;
+		}
+		out << std::endl << "}";
+	}
+}
+
+void stop_metadata_output(std::streambuf *buf, std::string fmt)
+{
+	std::ostream out(buf);
+	if (fmt == "json")
+		out << std::endl << "]" << std::endl;
 }

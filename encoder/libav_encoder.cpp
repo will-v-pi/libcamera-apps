@@ -251,7 +251,8 @@ LibAvEncoder::~LibAvEncoder()
 	LOG(2, "libav: codec closed");
 }
 
-void LibAvEncoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us)
+void LibAvEncoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+								const libcamera::ControlList &metadata)
 {
 	AVFrame *frame = av_frame_alloc();
 	if (!frame)

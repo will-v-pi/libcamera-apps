@@ -15,7 +15,7 @@
 #include "core/libcamera_app.hpp"
 #include "core/still_options.hpp"
 
-#include "encoder/encoder.hpp"
+#include "output/output.hpp"
 
 #include "image/image.hpp"
 

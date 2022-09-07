@@ -25,12 +25,14 @@ NullEncoder::~NullEncoder()
 }
 
 // Push the buffer onto the output queue to be "encoded" and returned.
-void NullEncoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us)
+void NullEncoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+							   const libcamera::ControlList &metadata)
 {
 	std::lock_guard<std::mutex> lock(output_mutex_);
 	OutputItem item = { mem, size, timestamp_us };
 	output_queue_.push(item);
 	output_cond_var_.notify_one();
+	metadata_queue_.push(metadata);
 }
 
 // Realistically we would probably want more of a queue as the caller's number
@@ -57,7 +59,9 @@ void NullEncoder::outputThread()
 					return;
 			}
 		}
-		output_ready_callback_(item.mem, item.length, item.timestamp_us, true);
+		auto metadata = metadata_queue_.front();
+		output_ready_callback_(item.mem, item.length, item.timestamp_us, true, metadata);
+		metadata_queue_.pop();
 		input_done_callback_(nullptr);
 	}
 }

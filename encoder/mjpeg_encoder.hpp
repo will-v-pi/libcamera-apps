@@ -22,7 +22,8 @@ public:
 	MjpegEncoder(VideoOptions const *options);
 	~MjpegEncoder();
 	// Encode the given buffer.
-	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us) override;
+	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+					  const libcamera::ControlList &metadata) override;
 
 private:
 	// How many threads to use. Whichever thread is idle will pick up the next frame.
@@ -64,4 +65,5 @@ private:
 	std::mutex output_mutex_;
 	std::condition_variable output_cond_var_;
 	std::thread output_thread_;
+	std::queue<libcamera::ControlList> metadata_queue_;
 };

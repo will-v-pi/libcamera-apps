@@ -11,7 +11,7 @@
 
 #include "encoder/encoder.hpp"
 
-typedef std::function<void(void *, size_t, int64_t, bool)> EncodeOutputReadyCallback;
+typedef std::function<void(void *, size_t, int64_t, bool, libcamera::ControlList)> EncodeOutputReadyCallback;
 
 class LibcameraEncoder : public LibcameraApp
 {
@@ -44,7 +44,8 @@ public:
 			std::lock_guard<std::mutex> lock(encode_buffer_queue_mutex_);
 			encode_buffer_queue_.push(completed_request); // creates a new reference
 		}
-		encoder_->EncodeBuffer(buffer->planes()[0].fd.get(), span.size(), mem, info, timestamp_ns / 1000);
+		encoder_->EncodeBuffer(buffer->planes()[0].fd.get(), span.size(), mem, info, timestamp_ns / 1000,
+							   completed_request->metadata);
 	}
 	VideoOptions *GetOptions() const { return static_cast<VideoOptions *>(options_.get()); }
 	void StopEncoder() { encoder_.reset(); }
@@ -72,8 +73,6 @@ private:
 			std::lock_guard<std::mutex> lock(encode_buffer_queue_mutex_);
 			if (encode_buffer_queue_.empty())
 				throw std::runtime_error("no buffer available to return");
-			auto completed_request = encode_buffer_queue_.front();
-			encoder_->metadataReady(completed_request->metadata);
 			encode_buffer_queue_.pop(); // drop shared_ptr reference
 		}
 	}

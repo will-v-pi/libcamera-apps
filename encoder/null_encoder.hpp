@@ -20,7 +20,8 @@ class NullEncoder : public Encoder
 public:
 	NullEncoder(VideoOptions const *options);
 	~NullEncoder();
-	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us) override;
+	void EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+					  const libcamera::ControlList &metadata) override;
 
 private:
 	void outputThread();
@@ -37,4 +38,5 @@ private:
 	std::mutex output_mutex_;
 	std::condition_variable output_cond_var_;
 	std::thread output_thread_;
+	std::queue<libcamera::ControlList> metadata_queue_;
 };

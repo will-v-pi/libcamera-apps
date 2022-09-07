@@ -37,12 +37,15 @@ MjpegEncoder::~MjpegEncoder()
 	LOG(2, "MjpegEncoder closed");
 }
 
-void MjpegEncoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us)
+void MjpegEncoder::EncodeBuffer(int fd, size_t size, void *mem, StreamInfo const &info, int64_t timestamp_us,
+								const libcamera::ControlList &metadata)
 {
 	std::lock_guard<std::mutex> lock(encode_mutex_);
 	EncodeItem item = { mem, info, timestamp_us, index_++ };
 	encode_queue_.push(item);
 	encode_cond_var_.notify_all();
+
+	metadata_queue_.push(metadata);
 }
 
 void MjpegEncoder::encodeJPEG(struct jpeg_compress_struct &cinfo, EncodeItem &item, uint8_t *&encoded_buffer,
@@ -186,7 +189,9 @@ void MjpegEncoder::outputThread()
 	got_item:
 		input_done_callback_(nullptr);
 
-		output_ready_callback_(item.mem, item.bytes_used, item.timestamp_us, true);
+		auto metadata = metadata_queue_.front();
+		output_ready_callback_(item.mem, item.bytes_used, item.timestamp_us, true, metadata);
+		metadata_queue_.pop();
 		free(item.mem);
 		index++;
 	}
