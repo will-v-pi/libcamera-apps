@@ -26,22 +26,15 @@ Encoder::Encoder(VideoOptions const *options) : options_(options), buf_metadata_
 		{
 			of_metadata_.open(filename, std::ios::out);
 			buf_metadata_ = of_metadata_.rdbuf();
-			if (!options->metadata_plain)
-			{
-				std::ostream out(buf_metadata_);
-				out << "[";
-			}
+			start_metadata_output(buf_metadata_, options_->metadata_format);
 		}
 	}
 }
 
 Encoder::~Encoder()
 {
-	if (!options_->metadata.empty() && !options_->metadata_plain)
-	{
-		std::ostream out(buf_metadata_);
-		out << std::endl << "]" << std::endl;
-	}
+	if (!options_->metadata.empty())
+		stop_metadata_output(buf_metadata_, options_->metadata_format);
 }
 
 Encoder *Encoder::Create(VideoOptions const *options, const StreamInfo &info)
@@ -64,10 +57,22 @@ void Encoder::metadataReady(const libcamera::ControlList &metadata)
 	if (options_->metadata.empty())
 		return;
 
-	const libcamera::ControlIdMap *id_map = metadata.idMap();
+	write_metadata(buf_metadata_, options_->metadata_format, metadata, !metadata_started_);
+	metadata_started_ = true;
+}
 
-	std::ostream out(buf_metadata_);
-	if (options_->metadata_plain)
+void start_metadata_output(std::streambuf *buf, std::string fmt)
+{
+	std::ostream out(buf);
+	if (fmt == "json")
+		out << "[" << std::endl;
+}
+
+void write_metadata(std::streambuf *buf, std::string fmt, const libcamera::ControlList &metadata, bool first_write)
+{
+	std::ostream out(buf);
+	const libcamera::ControlIdMap *id_map = metadata.idMap();
+	if (fmt == "txt")
 	{
 		for (auto const &[id, val] : metadata)
 			out << id_map->at(id)->name() << "=" << val.toString() << std::endl;
@@ -75,7 +80,9 @@ void Encoder::metadataReady(const libcamera::ControlList &metadata)
 	}
 	else
 	{
-		out << (metadata_started_ ? "," : "") << std::endl << "{";
+		if (!first_write)
+			out << "," << std::endl;
+		out << "{";
 		bool first_done = false;
 		for (auto const &[id, val] : metadata)
 		{
@@ -85,6 +92,12 @@ void Encoder::metadataReady(const libcamera::ControlList &metadata)
 			first_done = true;
 		}
 		out << std::endl << "}";
-		metadata_started_ = true;
 	}
+}
+
+void stop_metadata_output(std::streambuf *buf, std::string fmt)
+{
+	std::ostream out(buf);
+	if (fmt == "json")
+		out << std::endl << "]" << std::endl;
 }

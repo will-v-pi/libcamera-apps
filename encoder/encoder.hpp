@@ -43,3 +43,7 @@ protected:
 	std::ofstream of_metadata_;
 	bool metadata_started_ = false;
 };
+
+void start_metadata_output(std::streambuf *buf, std::string fmt);
+void write_metadata(std::streambuf *buf, std::string fmt, const libcamera::ControlList &metadata, bool first_write);
+void stop_metadata_output(std::streambuf *buf, std::string fmt);
